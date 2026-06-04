@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Builder Pattern — Pizza Demo</title>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f11;
+      --surface:   #18181c;
+      --surface2:  #222228;
+      --border:    #2e2e38;
+      --accent:    #7c6af7;
+      --accent2:   #a799ff;
+      --green:     #4ade80;
+      --amber:     #fbbf24;
+      --text:      #e8e8f0;
+      --muted:     #8888a0;
+      --radius:    10px;
+      --mono:      'Courier New', monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 0 3rem;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      padding: 1.5rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    header p {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.25rem;
+      gap: 2px;
+    }
+    .tab {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+    .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+    /* ── Panels ─────────────────────────────────────────────── */
+    .panel { display: none; padding: 1.25rem; }
+    .panel.active { display: block; }
+
+    /* ── Form fields ─────────────────────────────────────────── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field.full { grid-column: 1 / -1; }
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    select, input[type="text"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 10px;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+
+    /* toggles */
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .toggle {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      user-select: none;
+      transition: border-color .15s;
+    }
+    .toggle.on { border-color: var(--accent); background: #1e1b35; }
+    .toggle .dot {
+      width: 28px; height: 16px;
+      background: var(--border);
+      border-radius: 8px;
+      position: relative;
+      transition: background .2s;
+    }
+    .toggle .dot::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: transform .2s;
+    }
+    .toggle.on .dot { background: var(--accent); }
+    .toggle.on .dot::after { transform: translateX(12px); }
+
+    /* build button */
+    .build-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .build-btn:hover { opacity: .9; }
+    .build-btn:active { transform: scale(.98); }
+
+    /* ── Result card ─────────────────────────────────────────── */
+    #result, .preset-result { margin-top: 14px; }
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .result-header {
+      background: var(--surface2);
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-key { color: var(--muted); }
+    .result-val { font-weight: 600; color: var(--text); }
+    .result-val.on { color: var(--green); }
+
+    /* chain preview */
+    .chain {
+      margin-top: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.8;
+      color: var(--muted);
+      overflow-x: auto;
+    }
+    .chain .kw  { color: #a78bfa; }
+    .chain .cls { color: var(--green); }
+    .chain .str { color: var(--amber); }
+    .chain .mt  { color: var(--accent2); }
+
+    /* ── Code tab ───────────────────────────────────────────── */
+    .file-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .file-tab {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .file-tab.active {
+      background: var(--surface2);
+      color: var(--accent2);
+      border-color: var(--accent);
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 11.5px;
+      font-family: var(--mono);
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre;
+      color: #cdd0e0;
+    }
+    .kw  { color: #a78bfa; }
+    .cls { color: #4ade80; }
+    .str { color: #fbbf24; }
+    .cmt { color: #555570; font-style: italic; }
+    .ann { color: #60a5fa; }
+
+    /* ── Pattern tab ────────────────────────────────────────── */
+    .pattern-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .pattern-box.highlight { border-color: var(--accent); background: #1a1830; }
+    .pattern-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .pattern-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .pattern-code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent2);
+      line-height: 1.7;
+    }
+    .pattern-arrow { text-align: center; color: var(--muted); padding: 2px 0; font-size: 18px; }
+    .chip {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-right: 5px;
+      letter-spacing: 0.04em;
+    }
+    .chip-p { background: #2d2450; color: var(--accent2); }
+    .chip-g { background: #1a3025; color: var(--green); }
+    .why-box {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .why-box strong { color: var(--text); }
+
+    /* ── Presets tab ────────────────────────────────────────── */
+    .preset-grid { display: flex; flex-direction: column; gap: 10px; }
+    .preset-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .preset-card:hover { border-color: var(--accent); }
+    .preset-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .preset-desc { font-size: 12px; color: var(--muted); }
+
+    /* ── ANIMATION EXTENSIONS ───────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Pulsing oven block during code execution/building */
+    .pattern-oven-loader {
+      background: #141226;
+      border: 1px dashed var(--accent);
+      border-radius: var(--radius);
+      padding: 24px 14px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--accent2);
+      animation: ovenPulse 1.2s infinite ease-in-out;
+    }
+    @keyframes ovenPulse {
+      0%, 100% { opacity: 0.7; box-shadow: 0 0 0px transparent; }
+      50% { opacity: 1; box-shadow: 0 0 15px rgba(124, 106, 247, 0.2); }
+    }
+
+    /* Pop/Slide entry transition for built items */
+    .animate-pop {
+      animation: entryPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+    }
+    @keyframes entryPop {
+      from { opacity: 0; transform: translateY(12px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .error-msg { color: #f87171; font-size: 13px; padding: 10px 14px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="badge">Design Pattern</div>
+    <h1>Builder Pattern Demo 🍕</h1>
+    <p>Spring Boot backend · Vanilla HTML frontend</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="build">Build</button>
+    <button class="tab" data-tab="presets">Presets</button>
+    <button class="tab" data-tab="code">Code</button>
+    <button class="tab" data-tab="pattern">Pattern</button>
+  </div>
+
+  <div class="panel active" id="tab-build">
+
+    <div class="field-grid">
+      <div class="field">
+        <label>Size</label>
+        <select id="size">
+          <option>Small</option>
+          <option selected>Medium</option>
+          <option>Large</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Crust</label>
+        <select id="crust">
+          <option>Thin</option>
+          <option selected>Classic</option>
+          <option>Thick</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Sauce</label>
+        <select id="sauce">
+          <option selected>Tomato</option>
+          <option>Pesto</option>
+          <option>BBQ</option>
+          <option>White</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cheese</label>
+        <select id="cheese">
+          <option selected>Mozzarella</option>
+          <option>Cheddar</option>
+          <option>Vegan</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Toppings</label>
+        <input type="text" id="toppings" placeholder="e.g. Mushrooms, Olives" />
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle" id="toggle-cheese" onclick="toggleOption('cheese')">
+        <span>Extra Cheese</span>
+        <div class="dot"></div>
+      </div>
+      <div class="toggle" id="toggle-welldone" onclick="toggleOption('welldone')">
+        <span>Well Done</span>
+        <div class="dot"></div>
+      </div>
+    </div>
+
+    <button class="build-btn" onclick="buildPizza()">Build Pizza →</button>
+
+    <div id="result"></div>
+  </div>
+
+  <div class="panel" id="tab-presets">
+    <div class="preset-grid">
+      <div class="preset-card" onclick="loadPreset('margherita')">
+        <div class="preset-name">🍅 Margherita</div>
+        <div class="preset-desc">Medium · Thin · Tomato · Mozzarella · Fresh Basil</div>
+      </div>
+      <div class="preset-card" onclick="loadPreset('bbqloaded')">
+        <div class="preset-name">🔥 BBQ Loaded</div>
+        <div class="preset-desc">Large · Thick · BBQ · Cheddar · Pepperoni, Jalapeños — well done</div>
+      </div>
+      <div class="preset-card" onclick="loadPreset('vegan')">
+        <div class="preset-name">🌿 Vegan Delight</div>
+        <div class="preset-desc">Medium · Thin · Pesto · Vegan Cheese · Mushrooms, Olives</div>
+      </div>
+    </div>
+    <div class="preset-result" id="preset-result"></div>
+  </div>
+
+  <div class="panel" id="tab-code">
+    <div class="file-tabs">
+      <button class="file-tab active" onclick="switchFile('pizza')">Pizza.java</button>
+      <button class="file-tab" onclick="switchFile('builder')">Builder (inner)</button>
+      <button class="file-tab" onclick="switchFile('controller')">Controller</button>
+      <button class="file-tab" onclick="switchFile('client')">Usage</button>
+    </div>
+
+    <div id="code-pizza">
+<pre><span class="cmt">// Pizza.java — the Product (immutable)</span>
+<span class="kw">public class</span> <span class="cls">Pizza</span> {
+
+  <span class="kw">private final</span> String size, crust, sauce;
+  <span class="kw">private final</span> String cheese, toppings;
+  <span class="kw">private final boolean</span> extraCheese, wellDone;
+
+  <span class="cmt">// Only Builder can call this</span>
+  <span class="kw">private</span> <span class="cls">Pizza</span>(<span class="cls">Builder</span> b) {
+    <span class="kw">this</span>.size        = b.size;
+    <span class="kw">this</span>.crust       = b.crust;
+    <span class="kw">this</span>.sauce       = b.sauce;
+    <span class="kw">this</span>.cheese      = b.cheese;
+    <span class="kw">this</span>.toppings    = b.toppings;
+    <span class="kw">this</span>.extraCheese = b.extraCheese;
+    <span class="kw">this</span>.wellDone    = b.wellDone;
+  }
+
+  <span class="cmt">// Getters only — no setters</span>
+  <span class="kw">public</span> String  getSize()        { <span class="kw">return</span> size; }
+  <span class="kw">public</span> String  getCrust()       { <span class="kw">return</span> crust; }
+  <span class="kw">public boolean</span> isExtraCheese() { <span class="kw">return</span> extraCheese; }
+  <span class="cmt">// ... etc</span>
+}</pre>
+    </div>
+
+    <div id="code-builder" style="display:none">
+<pre><span class="cmt">// Static inner Builder class</span>
+<span class="kw">public static class</span> <span class="cls">Builder</span> {
+
+  <span class="cmt">// Required — passed in constructor</span>
+  <span class="kw">private final</span> String size;
+  <span class="kw">private final</span> String cheese;
+
+  <span class="cmt">// Optional — have sensible defaults</span>
+  <span class="kw">private</span> String  crust       = <span class="str">"Classic"</span>;
+  <span class="kw">private</span> String  sauce       = <span class="str">"Tomato"</span>;
+  <span class="kw">private</span> String  toppings    = <span class="str">""</span>;
+  <span class="kw">private boolean</span> extraCheese = <span class="kw">false</span>;
+  <span class="kw">private boolean</span> wellDone    = <span class="kw">false</span>;
+
+  <span class="kw">public</span> <span class="cls">Builder</span>(String size, String cheese) {
+    <span class="kw">this</span>.size   = size;
+    <span class="kw">this</span>.cheese = cheese;
+  }
+
+  /* Each setter returns `this` → fluent chain */
+  <span class="kw">public</span> <span class="cls">Builder</span> crust(String c)    { crust = c; <span class="kw">return this</span>; }
+  <span class="kw">public</span> <span class="cls">Builder</span> sauce(String s)    { sauce = s; <span class="kw">return this</span>; }
+  <span class="kw">public</span> <span class="cls">Builder</span> toppings(String t) { toppings = t; <span class="kw">return this</span>; }
+  <span class="kw">public</span> <span class="cls">Builder</span> extraCheese()     { extraCheese = <span class="kw">true</span>; <span class="kw">return this</span>; }
+  <span class="kw">public</span> <span class="cls">Builder</span> wellDone()        { wellDone = <span class="kw">true</span>; <span class="kw">return this</span>; }
+
+  <span class="cmt">// Terminal — validates then constructs</span>
+  <span class="kw">public</span> <span class="cls">Pizza</span> build() {
+    <span class="kw">return new</span> <span class="cls">Pizza</span>(<span class="kw">this</span>);
+  }
+}</pre>
+    </div>
+
+    <div id="code-controller" style="display:none">
+<pre><span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/api/pizza"</span>)
+<span class="ann">@CrossOrigin</span>(origins = <span class="str">"*"</span>)
+<span class="kw">public class</span> <span class="cls">PizzaController</span> {
+
+  <span class="ann">@PostMapping</span>(<span class="str">"/build"</span>)
+  <span class="kw">public</span> ResponseEntity&lt;Pizza&gt; build(
+          <span class="ann">@RequestBody</span> PizzaRequest req) {
+
+    Pizza.Builder b = <span class="kw">new</span> Pizza.Builder(
+            req.getSize(), req.getCheese())
+        .crust(req.getCrust())
+        .sauce(req.getSauce())
+        .toppings(req.getToppings());
+
+    <span class="kw">if</span> (req.isExtraCheese()) b.extraCheese();
+    <span class="kw">if</span> (req.isWellDone())    b.wellDone();
+
+    <span class="kw">return</span> ResponseEntity.ok(b.build());
+  }
+}</pre>
+    </div>
+
+    <div id="code-client" style="display:none">
+<pre><span class="cmt">// Fluent chaining — easy to read</span>
+Pizza margherita = <span class="kw">new</span> Pizza.Builder(<span class="str">"Medium"</span>, <span class="str">"Mozzarella"</span>)
+    .crust(<span class="str">"Thin"</span>)
+    .sauce(<span class="str">"Tomato"</span>)
+    .toppings(<span class="str">"Fresh Basil"</span>)
+    .build();
+
+Pizza loaded = <span class="kw">new</span> Pizza.Builder(<span class="str">"Large"</span>, <span class="str">"Cheddar"</span>)
+    .crust(<span class="str">"Thick"</span>)
+    .sauce(<span class="str">"BBQ"</span>)
+    .toppings(<span class="str">"Pepperoni, Jalapeños"</span>)
+    .extraCheese()
+    .wellDone()
+    .build();
+
+<span class="cmt">// vs. telescoping constructor — hard to read:</span>
+<span class="cmt">// new Pizza("L","Thick","BBQ","Ched","Pep",true,true)</span>
+<span class="cmt">//           ↑ which param is which? impossible to tell</span></pre>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-pattern">
+    <div class="pattern-box">
+      <div class="pattern-title"><span class="chip chip-g">Client</span>PizzaController</div>
+      <div class="pattern-sub">Calls the Builder, receives the Product</div>
+      <div class="pattern-code">new Pizza.Builder(size, cheese)<br>&nbsp;&nbsp;.crust().sauce().build()</div>
+    </div>
+    <div class="pattern-arrow">↓</div>
+    <div class="pattern-box highlight">
+      <div class="pattern-title"><span class="chip chip-p">Builder</span>Pizza.Builder</div>
+      <div class="pattern-sub">Accumulates config, validates, returns Product</div>
+      <div class="pattern-code">.size(s)  → this<br>.crust(c) → this<br>.extraCheese() → this<br>.build()  → Pizza ✓</div>
+    </div>
+    <div class="pattern-arrow">↓</div>
+    <div class="pattern-box">
+      <div class="pattern-title"><span class="chip chip-g">Product</span>Pizza</div>
+      <div class="pattern-sub">Immutable — no setters, only getters</div>
+      <div class="pattern-code">private Pizza(Builder b) { … }<br>getSize() isWellDone()</div>
+    </div>
+
+    <div style="margin-top: 14px;" class="why-box">
+      <strong>Why Builder?</strong><br>
+      Avoids telescoping constructors with 7+ positional params.
+      Fluent API is self-documenting. Required vs optional fields
+      are explicit. Validates before constructing. Result is
+      <strong>immutable</strong> — thread-safe by default.
+    </div>
+  </div>
+
+</div><script>
+  // ── State ──────────────────────────────────────────────────
+  const toggles = { cheese: false, welldone: false };
+  const API = 'http://localhost:8080/api/pizza';
+
+  // ── Tab switching ──────────────────────────────────────────
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── Toggle switches ────────────────────────────────────────
+  function toggleOption(key) {
+    toggles[key] = !toggles[key];
+    const el = document.getElementById('toggle-' + key);
+    el.classList.toggle('on', toggles[key]);
+  }
+
+  // ── File tab switching ─────────────────────────────────────
+  function switchFile(name) {
+    document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    ['pizza', 'builder', 'controller', 'client'].forEach(k => {
+      document.getElementById('code-' + k).style.display = k === name ? 'block' : 'none';
+    });
+  }
+
+  // ── Build via API ──────────────────────────────────────────
+  async function buildPizza() {
+    const payload = {
+      size:        document.getElementById('size').value,
+      crust:       document.getElementById('crust').value,
+      sauce:       document.getElementById('sauce').value,
+      cheese:      document.getElementById('cheese').value,
+      toppings:    document.getElementById('toppings').value,
+      extraCheese: toggles.cheese,
+      wellDone:    toggles.welldone
+    };
+
+    const resultEl = document.getElementById('result');
+    resultEl.innerHTML = `<div class="pattern-oven-loader">
+      <span class="spinner"></span> 🍕 Invoking fluent mutations inside the Pizza.Builder oven...
+    </div>`;
+
+    // Intentional minor artificial latency block so you can actually witness the baking animation
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    try {
+      const res  = await fetch(`${API}/build`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const pizza = await res.json();
+      renderResult(pizza, resultEl);
+    } catch (err) {
+      resultEl.innerHTML = renderError(err, payload);
+    }
+  }
+
+  // ── Load preset ────────────────────────────────────────────
+  async function loadPreset(name) {
+    const el = document.getElementById('preset-result');
+    el.innerHTML = `<div class="pattern-oven-loader">
+      <span class="spinner"></span> 📦 Fetching composite pre-configurations...
+    </div>`;
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    try {
+      const res   = await fetch(`${API}/preset/${name}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const pizza = await res.json();
+      renderResult(pizza, el);
+    } catch (err) {
+      el.innerHTML = renderError(err, { preset: name });
+    }
+  }
+
+  // ── Render helpers ─────────────────────────────────────────
+  function renderResult(pizza, el) {
+    const rows = [
+      ['Size',        pizza.size],
+      ['Crust',       pizza.crust],
+      ['Sauce',       pizza.sauce],
+      ['Cheese',      pizza.extraCheese ? pizza.cheese + ' (extra!)' : pizza.cheese],
+      ['Toppings',    pizza.toppings || '—'],
+      ['Well done',   pizza.wellDone ? 'Yes' : 'No'],
+    ].map(([k, v]) => `
+      <div class="result-row">
+        <span class="result-key">${k}</span>
+        <span class="result-val ${v === 'Yes' || v.toString().includes('extra!') ? 'on' : ''}">${v}</span>
+      </div>`).join('');
+
+    const chain = buildChain(pizza);
+
+    el.innerHTML = `
+      <div class="result-card animate-pop">
+        <div class="result-header">
+          <div class="dot-green"></div>Product Instantiated Successfully
+        </div>
+        ${rows}
+      </div>
+      <div class="chain animate-pop" style="animation-delay: 150ms;">${chain}</div>`;
+  }
+
+  function buildChain(p) {
+    let c = `<span class="kw">new</span> <span class="cls">Pizza.Builder</span>(<span class="str">"${p.size}"</span>, <span class="str">"${p.cheese}"</span>)\n`;
+    c    += `  .<span class="mt">crust</span>(<span class="str">"${p.crust}"</span>)\n`;
+    c    += `  .<span class="mt">sauce</span>(<span class="str">"${p.sauce}"</span>)\n`;
+    if (p.toppings) c += `  .<span class="mt">toppings</span>(<span class="str">"${p.toppings}"</span>)\n`;
+    if (p.extraCheese) c += `  .<span class="mt">extraCheese</span>()\n`;
+    if (p.wellDone)    c += `  .<span class="mt">wellDone</span>()\n`;
+    c    += `  .<span class="mt">build</span>();`;
+    return c;
+  }
+
+  function renderError(err, payload) {
+    const isNetwork = err.message.includes('fetch') || err.message.includes('Failed');
+    const hint = isNetwork
+      ? '⚠️ Local Server Stand-In — Showing client-side object generation:'
+      : `Error: ${err.message}`;
+
+    if (isNetwork) {
+      const sim = payload.preset
+        ? getPresetData(payload.preset)
+        : { ...payload, size: payload.size, extraCheese: payload.extraCheese, wellDone: payload.wellDone };
+      const container = document.createElement('div');
+      container.innerHTML = `<p style="font-size:12px;color:var(--amber);margin-bottom:8px;padding-left:4px">${hint}</p>`;
+      renderResult(sim, container);
+      return container.innerHTML;
+    }
+    return `<div class="error-msg animate-pop">${hint}</div>`;
+  }
+
+  function getPresetData(name) {
+    const presets = {
+      margherita: { size:'Medium', crust:'Thin',   sauce:'Tomato', cheese:'Mozzarella', toppings:'Fresh Basil',            extraCheese:false, wellDone:false },
+      bbqloaded:  { size:'Large',  crust:'Thick',  sauce:'BBQ',    cheese:'Cheddar',    toppings:'Pepperoni, Jalapeños, Onions', extraCheese:true,  wellDone:true  },
+      vegan:      { size:'Medium', crust:'Thin',   sauce:'Pesto',  cheese:'Vegan',      toppings:'Mushrooms, Olives, Peppers',  extraCheese:false, wellDone:false },
+    };
+    return presets[name] || presets.margherita;
+  }
+</script>
+</body>
+</html>
