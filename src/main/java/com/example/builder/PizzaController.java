@@ -30,7 +30,7 @@ public class PizzaController {
         if (req.getCrust() != null) builder.crust(req.getCrust());
         if (req.getSauce() != null) builder.sauce(req.getSauce());
 
-        if (req.getToppings() != null && !req.getToppings().isBlank())
+        if (req.getToppings() != null)
             builder.toppings(req.getToppings());
 
         if (req.isExtraCheese()) builder.extraCheese();

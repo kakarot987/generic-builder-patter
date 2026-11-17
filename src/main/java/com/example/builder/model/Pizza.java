@@ -59,8 +59,8 @@ public class Pizza {
                 throw new IllegalArgumentException("Size is required");
             if (cheese == null || cheese.isBlank())
                 throw new IllegalArgumentException("Cheese is required");
-            this.size   = size;
-            this.cheese = cheese;
+            this.size   = size.trim();
+            this.cheese = cheese.trim();
         }
 
         public Builder crust(String crust) {
@@ -78,7 +78,9 @@ public class Pizza {
         }
 
         public Builder toppings(String toppings) {
-            this.toppings = toppings;
+            if (toppings == null || toppings.isBlank())
+                throw new IllegalArgumentException("Toppings must not be blank");
+            this.toppings = toppings.trim();
             return this;
         }
 
