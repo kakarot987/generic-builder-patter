@@ -24,9 +24,11 @@ public class PizzaController {
     @PostMapping("/build")
     public ResponseEntity<Pizza> buildPizza(@RequestBody PizzaRequest req) {
 
-        Pizza.Builder builder = new Pizza.Builder(req.getSize(), req.getCheese())
-                .crust(req.getCrust())
-                .sauce(req.getSauce());
+        Pizza.Builder builder = new Pizza.Builder(req.getSize(), req.getCheese());
+
+        // Missing optional fields must not override the Builder's defaults.
+        if (req.getCrust() != null) builder.crust(req.getCrust());
+        if (req.getSauce() != null) builder.sauce(req.getSauce());
 
         if (req.getToppings() != null && !req.getToppings().isBlank())
             builder.toppings(req.getToppings());
@@ -43,6 +45,11 @@ public class PizzaController {
      * GET /api/pizza/preset/bbqloaded
      * GET /api/pizza/preset/vegan
      */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<java.util.Map<String, String>> handleInvalidOrder(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));
+    }
+
     @GetMapping("/preset/{name}")
     public ResponseEntity<Pizza> getPreset(@PathVariable String name) {
 
