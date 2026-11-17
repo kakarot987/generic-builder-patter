@@ -64,11 +64,15 @@ public class Pizza {
         }
 
         public Builder crust(String crust) {
+            if (crust == null || crust.isBlank())
+                throw new IllegalArgumentException("Crust must not be blank");
             this.crust = crust;
             return this;          // ← fluent chaining
         }
 
         public Builder sauce(String sauce) {
+            if (sauce == null || sauce.isBlank())
+                throw new IllegalArgumentException("Sauce must not be blank");
             this.sauce = sauce;
             return this;
         }
