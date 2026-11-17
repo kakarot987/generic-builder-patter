@@ -43,6 +43,15 @@ class PizzaControllerTest {
     }
 
     @Test
+    void explicitBlankToppingsAreRejectedRatherThanSilentlyDiscarded() throws Exception {
+        mvc.perform(post("/api/pizza/build")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"size\":\"Medium\",\"cheese\":\"Cheddar\",\"toppings\":\"  \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Toppings must not be blank"));
+    }
+
+    @Test
     void unknownPresetReturns400() throws Exception {
         mvc.perform(get("/api/pizza/preset/unknown"))
                 .andExpect(status().isBadRequest())
